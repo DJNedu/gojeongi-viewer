@@ -5,10 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>고쟁이 미적분Ⅰ 874제 — DJN edu | KAIST JUNE</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-<script src="https://www.geogebra.org/apps/deployggb.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js">
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('cloudModal').style.display==='flex') confirmCloudUser();
+  if(e.key==='Escape'&&document.getElementById('cloudModal').style.display==='flex') closeCloudModal();
+});
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js">
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('cloudModal').style.display==='flex') confirmCloudUser();
+  if(e.key==='Escape'&&document.getElementById('cloudModal').style.display==='flex') closeCloudModal();
+});
+</script>
+<script src="https://www.geogebra.org/apps/deployggb.js">
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('cloudModal').style.display==='flex') confirmCloudUser();
+  if(e.key==='Escape'&&document.getElementById('cloudModal').style.display==='flex') closeCloudModal();
+});
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('cloudModal').style.display==='flex') confirmCloudUser();
+  if(e.key==='Escape'&&document.getElementById('cloudModal').style.display==='flex') closeCloudModal();
+});
+</script>
 <style>
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -629,20 +649,36 @@ let syncTimer = null;
 
 function showUserPrompt() {
   if (CLOUD_USER) return;
-  var choice = prompt('클라우드 동기화 설정\n\n[신규] 이름만 입력 → 코드 자동생성\n[기존] 이름#코드 입력 → 기존 데이터 불러오기\n\n예: 준이 또는 준이#3847');
-  if (!choice || !choice.trim()) return;
-  choice = choice.trim();
-  if (choice.indexOf('#') >= 0) {
-    CLOUD_USER = choice;
+  var m = document.getElementById('cloudModal');
+  m.style.display = 'flex';
+  document.getElementById('cloudNameInput').value = '';
+  document.getElementById('cloudCodeResult').style.display = 'none';
+  document.getElementById('cloudNameInput').focus();
+}
+function closeCloudModal() {
+  document.getElementById('cloudModal').style.display = 'none';
+}
+function confirmCloudUser() {
+  var input = document.getElementById('cloudNameInput').value.trim();
+  if (!input) return;
+  if (input.indexOf('#') >= 0) {
+    CLOUD_USER = input;
+    localStorage.setItem('cloud_user', CLOUD_USER);
+    cloudSyncEnabled = true;
+    closeCloudModal();
+    updateCloudBtn();
+    loadFromCloud();
   } else {
     var code = String(Math.floor(1000 + Math.random() * 9000));
-    CLOUD_USER = choice + '#' + code;
-    alert('내 코드: ' + CLOUD_USER + '\n\n다른 기기에서 이 코드로 접속하세요!');
+    CLOUD_USER = input + '#' + code;
+    localStorage.setItem('cloud_user', CLOUD_USER);
+    cloudSyncEnabled = true;
+    var result = document.getElementById('cloudCodeResult');
+    result.textContent = '내 코드: ' + CLOUD_USER + ' (다른 기기에서 입력하세요)';
+    result.style.display = 'block';
+    updateCloudBtn();
+    setTimeout(function(){ closeCloudModal(); loadFromCloud(); }, 2500);
   }
-  localStorage.setItem('cloud_user', CLOUD_USER);
-  cloudSyncEnabled = true;
-  loadFromCloud();
-  updateCloudBtn();
 }
 
 function supaFetch(path, opts) {
@@ -1978,6 +2014,29 @@ document.addEventListener('DOMContentLoaded',()=>{
   }else{init();}
 });
 
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&document.getElementById('cloudModal').style.display==='flex') confirmCloudUser();
+  if(e.key==='Escape'&&document.getElementById('cloudModal').style.display==='flex') closeCloudModal();
+});
 </script>
+
+<!-- Cloud Sync Modal -->
+<div id="cloudModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.2);">
+    <h3 style="margin:0 0 8px;font-size:1rem;">☁️ 클라우드 동기화</h3>
+    <p style="margin:0 0 16px;font-size:.8rem;color:#666;line-height:1.5;">
+      <b>[신규]</b> 이름만 입력 → 코드 자동생성<br>
+      <b>[기존]</b> 이름#코드 입력 → 데이터 불러오기
+    </p>
+    <input id="cloudNameInput" type="text" placeholder="예: 준이 또는 준이#3847" 
+      style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:.9rem;box-sizing:border-box;margin-bottom:12px;">
+    <div id="cloudCodeResult" style="display:none;padding:10px;background:#f0fdf4;border-radius:8px;margin-bottom:12px;font-size:.8rem;color:#059669;font-weight:700;text-align:center;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="closeCloudModal()" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:.8rem;cursor:pointer;">취소</button>
+      <button onclick="confirmCloudUser()" style="flex:1;padding:10px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;">확인</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
