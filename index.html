@@ -492,6 +492,29 @@ body.has-fullscreen{overflow:hidden!important;}
 .problem-img{max-width:100%;height:auto;display:block;margin:0 auto;}
 .card-sol.show{display:block!important;}
 
+
+.filter-panel{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.filter-panel.open{max-height:500px;}
+@media(min-width:769px){
+  .filter-panel{max-height:none!important;overflow:visible;}
+  #filterToggleBtn{display:none!important;}
+}
+
+@media(max-width:768px){
+  .toolbar{height:44px!important;padding:0 10px!important;}
+  .toolbar .title{font-size:.85rem!important;}
+  .subbar{height:38px!important;gap:4px!important;padding:0 8px!important;}
+  .tb-btn{font-size:.65rem!important;padding:4px 8px!important;}
+  .tb-btn .cnt{font-size:.55rem!important;padding:0 4px!important;margin-left:3px!important;}
+  .controls{padding:4px 10px 0!important;}
+  .filter-row{gap:4px!important;}
+  .unit-btn{font-size:.62rem!important;padding:4px 8px!important;}
+  .unit-btn .cnt{font-size:.52rem!important;}
+}
+
+@media(max-width:768px){
+  :root{--toolbar-h:44px;--subbar-h:38px;}
+}
 </style>
 </head>
 <body>
@@ -524,11 +547,14 @@ body.has-fullscreen{overflow:hidden!important;}
 
 <!-- CONTROLS -->
 <div class="controls">
-  <div class="filter-row" id="unitFilter"></div>
-  <div class="filter-row" id="stepLevelFilter"></div>
-  <div class="filter-row" id="patternFilter"></div>
-  <div class="search-row">
-    <input type="text" class="search-input" id="searchInput" placeholder="문제 번호 또는 키워드 검색 (예: Q35, 극한, 미분)">
+  <div class="search-row" style="display:flex;gap:8px;align-items:center;">
+    <input type="text" class="search-input" id="searchInput" placeholder="문제 번호 또는 키워드 검색 (예: Q35, 극한, 미분)" style="flex:1;">
+    <button id="filterToggleBtn" onclick="toggleFilterPanel()" style="white-space:nowrap;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:.75rem;font-weight:700;cursor:pointer;color:var(--accent);">▼ 필터</button>
+  </div>
+  <div id="filterPanel" class="filter-panel">
+    <div class="filter-row" id="unitFilter"></div>
+    <div class="filter-row" id="stepLevelFilter"></div>
+    <div class="filter-row" id="patternFilter"></div>
   </div>
 </div>
 <div class="result-info" id="resultInfo" style="position:sticky;top:180px;z-index:97;background:var(--bg);"></div>
@@ -589,6 +615,14 @@ function normalizeType(t){
 }
 
 /* ============ INIT ============ */
+
+
+function toggleFilterPanel(){
+  var p=document.getElementById('filterPanel');
+  var b=document.getElementById('filterToggleBtn');
+  p.classList.toggle('open');
+  b.textContent=p.classList.contains('open')?'▲ 접기':'▼ 필터';
+}
 
 function init(){
   loadState();
