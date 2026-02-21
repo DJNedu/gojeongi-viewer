@@ -629,13 +629,20 @@ let syncTimer = null;
 
 function showUserPrompt() {
   if (CLOUD_USER) return;
-  var name = prompt('클라우드 동기화를 위해 이름/닉네임을 입력하세요.\n(입력하지 않으면 이 기기에서만 저장됩니다)');
-  if (name && name.trim()) {
-    CLOUD_USER = name.trim();
-    localStorage.setItem('cloud_user', CLOUD_USER);
-    cloudSyncEnabled = true;
-    loadFromCloud();
+  var choice = prompt('클라우드 동기화 설정\n\n[신규] 이름만 입력 → 코드 자동생성\n[기존] 이름#코드 입력 → 기존 데이터 불러오기\n\n예: 준이 또는 준이#3847');
+  if (!choice || !choice.trim()) return;
+  choice = choice.trim();
+  if (choice.indexOf('#') >= 0) {
+    CLOUD_USER = choice;
+  } else {
+    var code = String(Math.floor(1000 + Math.random() * 9000));
+    CLOUD_USER = choice + '#' + code;
+    alert('내 코드: ' + CLOUD_USER + '\n\n다른 기기에서 이 코드로 접속하세요!');
   }
+  localStorage.setItem('cloud_user', CLOUD_USER);
+  cloudSyncEnabled = true;
+  loadFromCloud();
+  updateCloudBtn();
 }
 
 function supaFetch(path, opts) {
