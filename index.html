@@ -542,7 +542,7 @@ body.has-fullscreen{overflow:hidden!important;}
   <button class="tb-btn" onclick="shuffleProblems()">🎲 랜덤</button>
   <button class="tb-btn green" id="answerToggleAll" onclick="toggleAllAnswers()">✓ 정답</button>
   <button class="tb-btn green" id="solToggleAll" onclick="toggleAllSols()">📝 해설</button>
-  <span class="stats-text">단원 <strong>9</strong> · 문제 <strong id="statTotal">874</strong> · 표시 <strong id="statShown">874</strong></span>
+  <button class="tb-btn" id="cloudBtn" onclick="showCloudStatus()" style="font-size:.6rem;">☁️ 동기화</button><span class="stats-text">단원 <strong>9</strong> · 문제 <strong id="statTotal">874</strong> · 표시 <strong id="statShown">874</strong></span>
 </div>
 
 <!-- CONTROLS -->
@@ -617,6 +617,116 @@ function normalizeType(t){
 /* ============ INIT ============ */
 
 
+
+/* ============ SUPABASE CLOUD SYNC ============ */
+const SUPA_URL = 'https://ekikhqoupjqdaslpzxqu.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVraWtocW91cGpxZGFzbHB6eHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0NDEzMzEsImV4cCI6MjA4NzAxNzMzMX0.zeH958fKXqNtW5IB_FYabT7h-ULs8YqoA3DeJt6-sc8';
+const VIEWER_ID = 'gojeongi_calc1';
+let CLOUD_USER = localStorage.getItem('cloud_user') || '';
+let cloudSyncEnabled = !!CLOUD_USER;
+let syncQueue = [];
+let syncTimer = null;
+
+function showUserPrompt() {
+  if (CLOUD_USER) return;
+  var name = prompt('클라우드 동기화를 위해 이름/닉네임을 입력하세요.\n(입력하지 않으면 이 기기에서만 저장됩니다)');
+  if (name && name.trim()) {
+    CLOUD_USER = name.trim();
+    localStorage.setItem('cloud_user', CLOUD_USER);
+    cloudSyncEnabled = true;
+    loadFromCloud();
+  }
+}
+
+function supaFetch(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({
+    'apikey': SUPA_KEY,
+    'Authorization': 'Bearer ' + SUPA_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal'
+  }, opts.headers || {});
+  return fetch(SUPA_URL + '/rest/v1/' + path, opts);
+}
+
+function loadFromCloud() {
+  if (!cloudSyncEnabled) return Promise.resolve();
+  return supaFetch(
+    'user_progress?user_id=eq.' + encodeURIComponent(CLOUD_USER) + 
+    '&viewer=eq.' + VIEWER_ID + '&select=problem_id,wrong,star,bookmark'
+  ).then(function(r) { return r.json(); })
+  .then(function(rows) {
+    if (!rows || !rows.length) return;
+    rows.forEach(function(row) {
+      problemState[row.problem_id] = {
+        wrong: row.wrong || false,
+        star: row.star || false,
+        bookmark: row.bookmark || false
+      };
+    });
+    saveState();
+    updateMetaCounts();
+    renderProblems();
+    console.log('[Cloud] Loaded ' + rows.length + ' progress records');
+  }).catch(function(e) { console.warn('[Cloud] Load failed:', e); });
+}
+
+function saveToCloud(problemId) {
+  if (!cloudSyncEnabled) return;
+  var s = problemState[problemId] || {wrong:false,star:false,bookmark:false};
+  // Debounce: queue saves and batch them
+  syncQueue.push({id: problemId, state: s});
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(flushSyncQueue, 500);
+}
+
+function flushSyncQueue() {
+  if (!syncQueue.length) return;
+  var batch = syncQueue.slice();
+  syncQueue = [];
+  
+  batch.forEach(function(item) {
+    supaFetch('rpc/upsert_progress', {
+      method: 'POST',
+      body: JSON.stringify({
+        p_user_id: CLOUD_USER,
+        p_viewer: VIEWER_ID,
+        p_problem_id: item.id,
+        p_wrong: item.state.wrong || false,
+        p_star: item.state.star || false,
+        p_bookmark: item.state.bookmark || false
+      })
+    }).catch(function(e) { console.warn('[Cloud] Save failed:', e); });
+  });
+}
+
+function showCloudStatus() {
+  if (cloudSyncEnabled) {
+    var action = confirm('클라우드 동기화 중: ' + CLOUD_USER + '\n\n로그아웃하시겠습니까?');
+    if (action) {
+      CLOUD_USER = '';
+      localStorage.removeItem('cloud_user');
+      cloudSyncEnabled = false;
+      updateCloudBtn();
+    }
+  } else {
+    showUserPrompt();
+    updateCloudBtn();
+  }
+}
+
+function updateCloudBtn() {
+  var btn = document.getElementById('cloudBtn');
+  if (!btn) return;
+  if (cloudSyncEnabled) {
+    btn.textContent = '☁️ ' + CLOUD_USER;
+    btn.classList.add('active');
+  } else {
+    btn.textContent = '☁️ 동기화';
+    btn.classList.remove('active');
+  }
+}
+
 function toggleFilterPanel(){
   var p=document.getElementById('filterPanel');
   var b=document.getElementById('filterToggleBtn');
@@ -638,6 +748,8 @@ function init(){
   buildUnitFilter();
   buildExtraFilters();
   renderProblems();
+  updateCloudBtn();
+  if(cloudSyncEnabled) loadFromCloud();
   document.getElementById('searchInput').addEventListener('input',renderProblems);
   window.addEventListener('scroll',()=>{
     document.getElementById('scrollTop').classList.toggle('show',window.scrollY>400);
